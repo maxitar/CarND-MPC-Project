@@ -20,13 +20,13 @@ double rad2deg(double x) { return x * 180 / pi(); }
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
 // else the empty string "" will be returned.
-string hasData(string s) {
+std::string hasData(std::string s) {
   auto found_null = s.find("null");
   auto b1 = s.find_first_of("[");
   auto b2 = s.rfind("}]");
-  if (found_null != string::npos) {
+  if (found_null != std::string::npos) {
     return "";
-  } else if (b1 != string::npos && b2 != string::npos) {
+  } else if (b1 != std::string::npos && b2 != std::string::npos) {
     return s.substr(b1, b2 - b1 + 2);
   }
   return "";
@@ -41,10 +41,19 @@ double polyeval(Eigen::VectorXd coeffs, double x) {
   return result;
 }
 
+// Evaluate the first derivative of a polynomial.
+double polydereval(Eigen::VectorXd coeffs, double x) {
+  double result = 0.0;
+  for (int i = 1; i < coeffs.size(); i++) {
+    result += coeffs[i] * i * pow(x, i-1);
+  }
+  return result;
+}
+
 // Fit a polynomial.
 // Adapted from
 // https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
-Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
+Eigen::VectorXd polyfit(const Eigen::VectorXd& xvals, const Eigen::VectorXd& yvals,
                         int order) {
   assert(xvals.size() == yvals.size());
   assert(order >= 1 && order <= xvals.size() - 1);
@@ -65,6 +74,22 @@ Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
   return result;
 }
 
+void map2car(
+    const std::vector<double>& map_x_wp, const std::vector<double>& map_y_wp, 
+    double x_car, double y_car, double psi,
+    std::vector<double>& car_x_wp, std::vector<double>& car_y_wp) {
+  int n = map_x_wp.size();
+  psi = -psi;
+  double sin_p = std::sin(psi);
+  double cos_p = std::cos(psi);
+  for (int i = 0; i < n; ++i) {
+    double x = map_x_wp[i] - x_car; 
+    double y = map_y_wp[i] - y_car;
+    car_x_wp[i] = cos_p*x - sin_p*y;
+    car_y_wp[i] = sin_p*x + cos_p*y;
+  }
+}
+
 int main() {
   uWS::Hub h;
 
@@ -76,21 +101,36 @@ int main() {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-    string sdata = string(data).substr(0, length);
-    cout << sdata << endl;
+    std::string sdata = std::string(data).substr(0, length);
+    //std::cout << sdata << std::endl;
     if (sdata.size() > 2 && sdata[0] == '4' && sdata[1] == '2') {
-      string s = hasData(sdata);
+    std::string s = hasData(sdata);
       if (s != "") {
         auto j = json::parse(s);
-        string event = j[0].get<string>();
+        std::string event = j[0].get<std::string>();
         if (event == "telemetry") {
           // j[1] is the data JSON object
-          vector<double> ptsx = j[1]["ptsx"];
-          vector<double> ptsy = j[1]["ptsy"];
+          std::vector<double> ptsx = j[1]["ptsx"];
+          std::vector<double> ptsy = j[1]["ptsy"];
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+
+          std::vector<double> x_input(ptsx.size());
+          std::vector<double> y_input(ptsy.size());
+          map2car(ptsx, ptsy, px, py, psi, x_input, y_input);
+          int x_size = x_input.size();
+          Eigen::VectorXd xs = Eigen::VectorXd::Map(x_input.data(), x_size);
+          Eigen::VectorXd ys = Eigen::VectorXd::Map(y_input.data(), x_size);
+          auto coeffs = polyfit(xs, ys, 3);
+          double x = 0.;
+          double y = 0.;
+          psi = 0.;
+          double cte = polyeval(coeffs, x) - y;
+          double epsi = psi - polydereval(coeffs, x);
+          Eigen::VectorXd state(6);
+          state << x, y, psi, v, cte, epsi;
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -98,18 +138,20 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          double steer_value;
-          double throttle_value;
+          std::vector<double> res = mpc.Solve(state, coeffs);
+          int N = (res.size()-2)/2;
+          double steer_value = -res[res.size()-2];
+          double throttle_value = res.back();
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value;
+          msgJson["steering_angle"] = steer_value/deg2rad(25);
           msgJson["throttle"] = throttle_value;
 
           //Display the MPC predicted trajectory 
-          vector<double> mpc_x_vals;
-          vector<double> mpc_y_vals;
+          std::vector<double> mpc_x_vals(res.begin(), res.begin()+N);
+          std::vector<double> mpc_y_vals(res.begin()+N, res.begin()+2*N);
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
@@ -118,18 +160,19 @@ int main() {
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
-
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
+          std::vector<double> next_x_vals(60);
+          std::vector<double> next_y_vals(60);
+          std::iota(next_x_vals.begin(), next_x_vals.end(), 0);
+          std::transform(next_x_vals.begin(), next_x_vals.end(), next_y_vals.begin(), [&coeffs](double x){ return polyeval(coeffs, x); });
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
 
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
           // Latency
           // The purpose is to mimic real driving conditions where
           // the car does actuate the commands instantly.
@@ -139,7 +182,8 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          int latency = 0; //100
+          std::this_thread::sleep_for(std::chrono::milliseconds(latency));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
