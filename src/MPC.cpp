@@ -77,20 +77,20 @@ class FG_eval {
       AD<double> epsi = vars[epsi_start + t];
       fg[0] += CppAD::pow(cte, 2);
       fg[0] += CppAD::pow(epsi, 2);
-      fg[0] += 0.1*CppAD::pow(v-v_target, 2);
+      fg[0] += 0.0001*CppAD::pow(v-v_target, 2);
     }
 
     for (int t = 0; t < N-1; ++t) {
       fg[0] += 100*CppAD::pow(vars[delta_start +t], 2);
-      fg[0] += CppAD::pow(vars[a_start +t], 2);
+      //fg[0] += 0.001*CppAD::pow(vars[a_start +t], 2);
     }
     for (int t = 0; t < N-2; ++t) {
       //AD<double> delta_diff = vars[delta_start + t + 1] - vars[delta_start + t];
       //AD<double> a_diff = vars[a_start + t + 1] - vars[a_start + t];
       //fg[0] += delta_diff*delta_diff;
       //fg[0] += a_diff*a_diff;
-      fg[0] += 600*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 15*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      fg[0] += 500*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 0.01*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
     //
     // Setup Constraints
@@ -274,7 +274,9 @@ std::vector<double> MPC::Solve(const Eigen::VectorXd& state, const Eigen::Vector
   for (int i = 0; i < psi_start; ++i) {
     result[i] = solution.x[i];
   }
-  result[2*N] = solution.x[delta_start];
-  result[2*N+1] = solution.x[a_start];
+  result[2*N] = solution.x[delta_start+1];
+  result[2*N+1] = solution.x[a_start+1];
+  //result[2*N] = (solution.x[delta_start+1] + solution.x[delta_start])*0.5;
+  //result[2*N+1] = (solution.x[a_start+1] + solution.x[a_start])*0.5;
   return result;
 }

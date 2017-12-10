@@ -90,7 +90,7 @@ void map2car(
   }
 }
 
-void advanceState(Eigen::VectorXd& state, double dt, double Lf) {
+void advanceState(Eigen::VectorXd& state, double dt, double Lf, const Eigen::VectorXd& coeffs) {
   double x = state[0];
   double y = state[1];
   double psi = state[2];
@@ -99,8 +99,8 @@ void advanceState(Eigen::VectorXd& state, double dt, double Lf) {
   double epsi = state[5];
   double delta = state[6];
   double a = state[7];
-  double f = cte;
-  double psides = -epsi;
+  double f = polyeval(coeffs, x);
+  double psides = std::atan(polydereval(coeffs, x));
 
   state[0] = x + v*std::cos(psi)*dt;
   state[1] = y + v*std::sin(psi)*dt;
@@ -131,6 +131,7 @@ int main() {
         std::string event = j[0].get<std::string>();
         if (event == "telemetry") {
           // j[1] is the data JSON object
+          auto start = std::chrono::system_clock::now();
           std::vector<double> ptsx = j[1]["ptsx"];
           std::vector<double> ptsy = j[1]["ptsy"];
           double px = j[1]["x"];
@@ -160,19 +161,22 @@ int main() {
           psi = 0.;
           double cte = polyeval(coeffs, x) - y;
           //double cte = -polyeval(coeffs, x);
-          double epsi = psi - polydereval(coeffs, x);
+          double epsi = psi - std::atan(polydereval(coeffs, x));
           int latency = 100; //100 //milliseconds
           Eigen::VectorXd state(8);
           state << x, y, psi, v, cte, epsi, -delta, a;
           if (latency > 0) {
             //advanceState(state, latency/1000.0, 2.67);
-            advanceState(state, 0.07, 2.67);
-            state[3] = v;
-            //advanceState(state, 0.05, 2.67);
+            advanceState(state, 0.1, 2.67, coeffs);
+            //advanceState(state, 0.05, 2.67, coeffs);
+            //advanceState(state, 0.025, 2.67, coeffs);
+            //advanceState(state, 0.025, 2.67, coeffs);
             //state[3] = v;
-            state[4] = polyeval(coeffs,state[0]) - state[1];
+            //advanceState(state, 0.035, 2.67, coeffs);
+            //state[3] = v;
+            //state[4] = polyeval(coeffs,state[0]) - state[1];
             //state[4] = state[1] - polyeval(coeffs,state[0]);
-            state[5] = state[2] - polydereval(coeffs,state[0]);
+            //state[5] = state[2] - std::atan(polydereval(coeffs,state[0]));
           }
           //std::cout << state << std::endl;
 
@@ -186,7 +190,7 @@ int main() {
           int N = (res.size()-2)/2;
           double steer_value = res[res.size()-2];
           double throttle_value = res.back();
-          std::cout << steer_value << " " << throttle_value << std::endl;
+          //std::cout << steer_value << " " << throttle_value << std::endl;
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -217,6 +221,9 @@ int main() {
 
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
+          auto end = std::chrono::system_clock::now();
+          std::chrono::duration<double> elapsed = end-start;
+          std::cout << elapsed.count() << std::endl;
           //std::cout << msg << std::endl;
           // Latency
           // The purpose is to mimic real driving conditions where
