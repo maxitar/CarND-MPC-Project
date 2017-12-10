@@ -8,8 +8,8 @@ using CppAD::AD;
 namespace {
   // TODO: Set the timestep length and duration
   size_t N = 10;
-  double dt = 0.08;
-  double v_target = 70.;
+  double dt = 0.05;
+  double v_target = 110.;
   int x_start = 0;
   int y_start = N+x_start;
   int psi_start = N+y_start;
@@ -75,20 +75,22 @@ class FG_eval {
       AD<double> v = vars[v_start + t];
       AD<double> cte = vars[cte_start + t];
       AD<double> epsi = vars[epsi_start + t];
-      fg[0] += cte*cte;
-      fg[0] += epsi*epsi;
-      fg[0] += (v-v_target)*(v-v_target);
+      fg[0] += CppAD::pow(cte, 2);
+      fg[0] += CppAD::pow(epsi, 2);
+      fg[0] += 0.1*CppAD::pow(v-v_target, 2);
     }
 
     for (int t = 0; t < N-1; ++t) {
-      //fg[0] += vars[delta_start +t]*vars[delta_start + t];
-      //fg[0] += vars[a_start +t]*vars[a_start + t];
+      fg[0] += 100*CppAD::pow(vars[delta_start +t], 2);
+      fg[0] += CppAD::pow(vars[a_start +t], 2);
     }
     for (int t = 0; t < N-2; ++t) {
       //AD<double> delta_diff = vars[delta_start + t + 1] - vars[delta_start + t];
       //AD<double> a_diff = vars[a_start + t + 1] - vars[a_start + t];
       //fg[0] += delta_diff*delta_diff;
       //fg[0] += a_diff*a_diff;
+      fg[0] += 600*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 15*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
     //
     // Setup Constraints
@@ -140,6 +142,7 @@ class FG_eval {
       fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 * dt / Lf);
       fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
       fg[1 + cte_start + t] = cte1 - ((f0-y0) + v0 * CppAD::sin(epsi0) * dt);
+      //fg[1 + cte_start + t] = cte1 - ((y0-f0) + v0 * CppAD::sin(epsi0) * dt);
       fg[1 + epsi_start + t] =
           epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
     }
