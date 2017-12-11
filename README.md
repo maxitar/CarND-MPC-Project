@@ -40,5 +40,11 @@ Self-Driving Car Engineer Nanodegree Program
 
 ## Model
 
-x<sub>t+1</sub> = x<sub>t</sub> + v<sub>t</sub>cos(psi<sub>t</sub>)dt
-y<sub>t+1</sub> = y<sub>t</sub> + v<sub>t</sub>sin(psi<sub>t</sub>)dt
+I use the kinematic bicycle model given by the following equations 
+
+1. x<sub>t+1</sub> = x<sub>t</sub> + v<sub>t</sub>cos(psi<sub>t</sub>)dt
+2. y<sub>t+1</sub> = y<sub>t</sub> + v<sub>t</sub>sin(psi<sub>t</sub>)dt
+3. psi<sub>t+1</sub> = psi<sub>t</sub> + v<sub>t</sub>delta<sub>t</sub>)dt/L<sub>f</sub>
+4. v<sub>t+1</sub> = v<sub>t</sub> + a<sub>t</sub>dt
+5. cte<sub>t+1</sub> = f(x<sub>t</sub>) - y<sub>t</sub> + v<sub>t</sub>sin(epsi<sub>t</sub>)dt
+6. epsi<sub>t+1</sub> = psi<sub>t</sub> psides<sub>t</sub> + v<sub>t</sub>delta<sub>t</sub>)dt/L<sub>f</sub> 
