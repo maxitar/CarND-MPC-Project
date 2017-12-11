@@ -7,7 +7,7 @@
 class Parameters {
 public:
   int    latency       = 100;  // latency (milliseconds)
-  double dt_latency    = 0.07; // dt for calculating first position because of latency (seconds)
+  double dt_latency    = 0.1;  // dt for calculating first position because of latency (seconds)
   int    N             = 10;   // number of time steps
   double dt            = 0.05; // time step (seconds)
   double v_target      = 110.; // target velocity (mph)
@@ -16,9 +16,9 @@ public:
   double w_delta_v     = 1e-4; // cost weight for (v - v_target)^2
   double w_steer       = 100.; // cost weight for delta^2
   double w_acc         = 0.;   // cost weight for a^2
-  double w_steer_delta = 800;  // cost weight for (delta_t - delta_{t-1})^2
-  double w_acc_delta   = 1e-3; // cost weight for (a_t - a_{t-1})^2
-  int    control_idx   = 0;    // which control to use from control vector 
+  double w_steer_delta = 500;  // cost weight for (delta_t - delta_{t-1})^2
+  double w_acc_delta   = 1e-2; // cost weight for (a_t - a_{t-1})^2
+  int    control_idx   = 1;    // which control to use from control vector 
 
   Parameters(std::string path = "");
 };
