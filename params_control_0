@@ -1,0 +1,13 @@
+latency        100  // latency (milliseconds)
+dt_latency     0.07 // dt for calculating first position because of latency (seconds)
+N              10   // number of time steps
+dt             0.05 // time step (seconds)
+v_target       110. // target velocity (mph)
+w_cte          1.0  // cost weight for cte^2
+w_epsi         1.0  // cost weight for epsi^2
+w_delta_v      1e-4 // cost weight for (v - v_target)^2
+w_steer        100. // cost weight for delta^2
+w_acc          0.   // cost weight for a^2
+w_steer_delta  800  // cost weight for (delta_t - delta_{t-1})^2
+w_acc_delta    1e-3 // cost weight for (a_t - a_{t-1})^2
+control_idx    0    // which control to use

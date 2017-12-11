@@ -90,32 +90,15 @@ void map2car(
   }
 }
 
-void advanceState(Eigen::VectorXd& state, double dt, double Lf, const Eigen::VectorXd& coeffs) {
-  double x = state[0];
-  double y = state[1];
-  double psi = state[2];
-  double v = state[3];
-  double cte = state[4];
-  double epsi = state[5];
-  double delta = state[6];
-  double a = state[7];
-  double f = polyeval(coeffs, x);
-  double psides = std::atan(polydereval(coeffs, x));
-
-  state[0] = x + v*std::cos(psi)*dt;
-  state[1] = y + v*std::sin(psi)*dt;
-  state[2] = psi + v*delta*dt/Lf;
-  state[3] = v + a*dt;
-  state[4] = (f-y) + v*std::sin(epsi)*dt;
-  //state[4] = (y-f) + v*std::sin(epsi)*dt;
-  state[5] = psi - psides + v*delta*dt/Lf;
-}
-
-int main() {
+int main(int argc, char** argv) {
   uWS::Hub h;
 
   // MPC is initialized here!
-  MPC mpc;
+  std::string path = "";
+  if (argc > 1) {
+    path = argv[1];
+  }
+  MPC mpc(Parameters{path});
 
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -140,7 +123,6 @@ int main() {
           double v = j[1]["speed"];
           double delta = j[1]["steering_angle"];
           double a = j[1]["throttle"];
-          //std::cout << delta << " " << a << std::endl;
 
           std::vector<double> x_input(ptsx.size());
           std::vector<double> y_input(ptsy.size());
@@ -149,45 +131,35 @@ int main() {
           Eigen::VectorXd xs = Eigen::VectorXd::Map(x_input.data(), x_size);
           Eigen::VectorXd ys = Eigen::VectorXd::Map(y_input.data(), x_size);
           auto coeffs = polyfit(xs, ys, 3);
-          //std::cout << xs << std::endl;
-          //for (int i = 0; i < ptsx.size()-1; ++i) {
-          //  if (x_input[i+1] < x_input[i]) {
-          //    std::cout << xs << std::endl;
-          //    throw;
-          //  }
-         // }
+
           double x = 0.;
           double y = 0.;
           psi = 0.;
-          double cte = polyeval(coeffs, x) - y;
-          //double cte = -polyeval(coeffs, x);
-          double epsi = psi - std::atan(polydereval(coeffs, x));
-          int latency = 100; //100 //milliseconds
-          Eigen::VectorXd state(8);
-          state << x, y, psi, v, cte, epsi, -delta, a;
+          double cte = polyeval(coeffs, x);
+          double epsi = -std::atan(polydereval(coeffs, x));
+
+          int latency = mpc.p_.latency; //milliseconds
+          double dt_latency = mpc.p_.dt_latency;
           if (latency > 0) {
-            //advanceState(state, latency/1000.0, 2.67);
-            advanceState(state, 0.1, 2.67, coeffs);
-            //advanceState(state, 0.05, 2.67, coeffs);
-            //advanceState(state, 0.025, 2.67, coeffs);
-            //advanceState(state, 0.025, 2.67, coeffs);
-            //state[3] = v;
-            //advanceState(state, 0.035, 2.67, coeffs);
-            //state[3] = v;
-            //state[4] = polyeval(coeffs,state[0]) - state[1];
-            //state[4] = state[1] - polyeval(coeffs,state[0]);
-            //state[5] = state[2] - std::atan(polydereval(coeffs,state[0]));
+            double Lf = 2.67;
+            x = v*dt_latency;
+            y = 0.;
+            psi = -v*delta*dt_latency/Lf;
+            cte += v*std::sin(epsi)*dt_latency;
+            epsi += -v*delta*dt_latency/Lf;
+            v += a*dt_latency;
           }
-          //std::cout << state << std::endl;
+          Eigen::VectorXd state(6);
+          state << x, y, psi, v, cte, epsi;
 
           /*
-          * TODO: Calculate steering angle and throttle using MPC.
+          * Calculate steering angle and throttle using MPC.
           *
           * Both are in between [-1, 1].
           *
           */
           std::vector<double> res = mpc.Solve(state, coeffs);
-          int N = (res.size()-2)/2;
+          int N = mpc.p_.N;
           double steer_value = res[res.size()-2];
           double throttle_value = res.back();
           //std::cout << steer_value << " " << throttle_value << std::endl;
