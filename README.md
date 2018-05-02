@@ -44,10 +44,10 @@ I use the kinematic bicycle model given by the following equations (in discretiz
 
 1. x<sub>t+1</sub> = x<sub>t</sub> + v<sub>t</sub>cos(psi<sub>t</sub>)dt
 2. y<sub>t+1</sub> = y<sub>t</sub> + v<sub>t</sub>sin(psi<sub>t</sub>)dt
-3. psi<sub>t+1</sub> = psi<sub>t</sub> + v<sub>t</sub>delta<sub>t</sub>)dt/L<sub>f</sub>
+3. psi<sub>t+1</sub> = psi<sub>t</sub> + v<sub>t</sub>delta<sub>t</sub>dt/L<sub>f</sub>
 4. v<sub>t+1</sub> = v<sub>t</sub> + a<sub>t</sub>dt
 5. cte<sub>t+1</sub> = f(x<sub>t</sub>) - y<sub>t</sub> + v<sub>t</sub>sin(epsi<sub>t</sub>)dt
-6. epsi<sub>t+1</sub> = psi<sub>t</sub> - psides<sub>t</sub> + v<sub>t</sub>delta<sub>t</sub>)dt/L<sub>f</sub> 
+6. epsi<sub>t+1</sub> = psi<sub>t</sub> - psides<sub>t</sub> + v<sub>t</sub>delta<sub>t</sub>dt/L<sub>f</sub> 
 
 In this model the state is represented by: `x` and `y` are the coordinates of our car, `psi` is its heading, `v` is the velocity, `cte` is the cross-track error, and `epsi` is the orientiation error. Our actuators are `delta` and `a` - the steering angle and acceleration respectively. `Lf` is the distance between the front wheels and the center of gravity of the car. `delta` is restricted between `[-25degrees, 25degrees]` and `a` is restricted between `[-1, 1]`. Note that in the current case, `a` that we get from the simulator is actually not acceleration but throttle, so the model is not exactly correct.
 
